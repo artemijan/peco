@@ -635,7 +635,7 @@ func (p *Peco) populateFilters() error {
 
 func (p *Peco) populateKeymap() error {
 	// Create a new keymap object
-	k := NewKeymap(p.config.Keymap, p.config.Action)
+	k := NewKeymap(p.config.Keymap, p.config.Action, p.config.Exec)
 	if err := k.ApplyKeybinding(); err != nil {
 		return errors.Wrap(err, "failed to apply key bindings")
 	}

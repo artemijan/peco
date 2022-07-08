@@ -248,6 +248,7 @@ type BasicLayout struct {
 type Keymap struct {
 	Config map[string]string
 	Action map[string][]string // custom actions
+	Exec   map[string]string
 	seq    Keyseq
 }
 
@@ -286,6 +287,8 @@ type Config struct {
 	// events against user input, but since then this has changed
 	// into something that just records the user's config input
 	Keymap              map[string]string `json:"Keymap"`
+	Exec                map[string]string `json:"Exec"`
+	ExecShellPath       string 						`json:"ExecShellPath"`
 	Matcher             string            `json:"Matcher"`        // Deprecated.
 	InitialMatcher      string            `json:"InitialMatcher"` // Use this instead of Matcher
 	InitialFilter       string            `json:"InitialFilter"`

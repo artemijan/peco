@@ -348,22 +348,40 @@ As of v0.2.0, you can use a list of keys (separated by comma) to register an act
 
 As of v0.2.1, you can create custom combined actions. For example, if you find yourself repeatedly needing to select 4 lines out of the list, you may want to define your own action like this:
 
-```json
-{
-    "Action": {
-        "foo.SelectFour": [
-            "peco.ToggleRangeMode",
-            "peco.SelectDown",
-            "peco.SelectDown",
-            "peco.SelectDown",
-            "peco.ToggleRangeMode"
-        ]
-    },
-    "Keymap": {
-        "M-f": "foo.SelectFour"
-    }
-}
-```
+* Example 1
+
+  ```json
+  {
+      "Action": {
+          "foo.SelectFour": [
+              "peco.ToggleRangeMode",
+              "peco.SelectDown",
+              "peco.SelectDown",
+              "peco.SelectDown",
+              "peco.ToggleRangeMode"
+          ]
+      },
+      "Keymap": {
+          "M-f": "foo.SelectFour"
+      }
+  }
+  ```
+
+* Example 2
+
+  ```json
+  {
+      "Exec": {
+        "vscode": "code $result && exit"
+      },
+      "ExecShellPath": "/opt/homebrew/bin/fish", //if not set then $SHELL env will be used by default
+      "Keymap": {
+          "C-v": "vscode"
+      }
+  }
+  ```
+
+  By using this example you can assign hotkeys to actions, for example to start visual studio code in a selected folder. Where $result is a selected line.
 
 This creates a new combined action `foo.SelectFour` (the format of the name is totally arbitrary, I just like to put namespaces), and assigns that action to `M-f`. When it's fired, it toggles the range selection mode and highlights 4 lines, and then goes back to waiting for your input.
 

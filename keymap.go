@@ -2,20 +2,21 @@ package peco
 
 import (
 	"context"
-	"sort"
-	"strings"
-	"time"
 	"github.com/lestrrat-go/pdebug"
 	"github.com/nsf/termbox-go"
 	"github.com/peco/peco/internal/keyseq"
 	"github.com/pkg/errors"
+	"sort"
+	"strings"
+	"time"
 )
 
 // NewKeymap creates a new Keymap struct
-func NewKeymap(config map[string]string, actions map[string][]string) Keymap {
+func NewKeymap(config map[string]string, actions map[string][]string, execs map[string]string) Keymap {
 	return Keymap{
 		Config: config,
 		Action: actions,
+		Exec:   execs,
 		seq:    keyseq.New(),
 	}
 }
@@ -93,9 +94,9 @@ func wrapClearSequence(a Action) Action {
 		if s, err := keyseq.EventToString(ev); err == nil {
 			seq.Add(s)
 		}
-
+		var msg string
 		if seq.Len() > 0 {
-			msg := strings.Join(seq.KeyNames(), " ")
+			msg = strings.Join(seq.KeyNames(), " ")
 			state.Hub().SendStatusMsgAndClear(ctx, msg, 500*time.Millisecond)
 			seq.Reset()
 		}
@@ -132,7 +133,11 @@ func (km Keymap) resolveActionName(name string, depth int) (Action, error) {
 		nameToActions[name] = v
 		return v, nil
 	}
-
+	_, k := km.Exec[name]
+	if k {
+		v = nameToActions["peco.Exec"]
+		return v, nil
+	}
 	return nil, errors.Errorf("could not resolve %s: no such action", name)
 }
 

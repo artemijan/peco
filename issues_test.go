@@ -113,3 +113,44 @@ func TestIssue345(t *testing.T) {
 	time.Sleep(time.Second)
 
 }
+func TestIssue346(t *testing.T) {
+	cfg, err := newConfig(`{
+	"Keymap": {
+		"C-v": "vscode"
+	},
+	"ExecShellPath": "fish",
+	"Exec": {
+		"vscode": "code $result && exit"
+	}
+}`)
+	if !assert.NoError(t, err, "newConfig should succeed") {
+		return
+	}
+	defer os.Remove(cfg)
+
+	state := newPeco()
+	state.skipReadConfig = false
+	if !assert.NoError(t, state.config.Init(), "Config.Init should succeed") {
+		return
+	}
+	
+	state.Argv = append(state.Argv, []string{"--rcfile", cfg}...)
+	
+	ctx, cancel := context.WithCancel(context.Background())
+	go state.Run(ctx)
+	defer cancel()
+	
+	<-state.Ready()
+	
+	ev := termbox.Event{
+		Type: termbox.EventKey,
+		Key:  termbox.KeyCtrlV,
+	}
+	
+	if !assert.NoError(t, state.Keymap().ExecuteAction(ctx, state, ev), "ExecuteAction should succeed") {
+		return
+	}
+
+	time.Sleep(time.Second)
+
+}

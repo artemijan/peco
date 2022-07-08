@@ -2,13 +2,13 @@ package peco
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"unicode"
-
-	"context"
 
 	"github.com/google/btree"
 	"github.com/lestrrat-go/pdebug"
@@ -32,6 +32,13 @@ func (a ActionFunc) Execute(ctx context.Context, state *Peco, e termbox.Event) {
 
 func (a ActionFunc) registerKeySequence(k keyseq.KeyList) {
 	defaultKeyBinding[k.String()] = a
+}
+
+func getShellPath(state *Peco) string {
+	if len(state.config.ExecShellPath) > 0 {
+		return state.config.ExecShellPath
+	}
+	return os.Getenv("SHELL")
 }
 
 // Register fulfills the Action interface for AfterFunc. Registers `a`
@@ -83,6 +90,7 @@ func init() {
 	ActionFunc(doEndOfFile).Register("EndOfFile")
 	ActionFunc(doEndOfLine).Register("EndOfLine", termbox.KeyCtrlE)
 	ActionFunc(doFinish).Register("Finish", termbox.KeyEnter)
+	ActionFunc(doExec).Register("Exec")
 	ActionFunc(doForwardChar).Register("ForwardChar", termbox.KeyCtrlF)
 	ActionFunc(doForwardWord).Register("ForwardWord")
 	ActionFunc(doKillEndOfLine).Register("KillEndOfLine", termbox.KeyCtrlK)
@@ -332,10 +340,84 @@ func doFinish(ctx context.Context, state *Peco, _ termbox.Event) {
 	})
 
 	var err error
-	state.Hub().SendStatusMsg(ctx, "Executing " + ccarg)
+	state.Hub().SendStatusMsg(ctx, "Executing "+ccarg)
 	cmd := util.Shell(ccarg)
 	cmd.Stdin = &stdin
 	cmd.Stdout = state.Stdout
+	cmd.Stderr = state.Stderr
+	// Setup some environment variables. Start with a copy of the current
+	// environment...
+	env := os.Environ()
+
+	// Add some PECO specific ones...
+	// PECO_QUERY: current query value
+	// PECO_FILENAME: input file name, if any. "-" for stdin
+	// PECO_LINE_COUNT: number of lines in the original input
+	// PECO_MATCHED_LINE_COUNT: number of lines matched (number of lines being
+	//     sent to stdin of the command being executed)
+
+	if s, ok := state.Source().(*Source); ok {
+		env = append(env,
+			`PECO_FILENAME=`+s.Name(),
+			`PECO_LINE_COUNT=`+strconv.Itoa(s.Size()),
+		)
+	}
+
+	env = append(env,
+		`PECO_QUERY=`+state.Query().String(),
+		`PECO_MATCHED_LINE_COUNT=`+strconv.Itoa(sel.Len()),
+	)
+	cmd.Env = env
+
+	state.screen.Suspend()
+
+	err = cmd.Run()
+	state.screen.Resume()
+	state.Hub().SendDraw(ctx, &DrawOptions{DisableCache: true})
+	if err != nil {
+		// bail out, or otherwise the user cannot know what happened
+		state.Exit(errors.Wrap(err, `failed to execute command`))
+	}
+}
+
+func doExec(ctx context.Context, state *Peco, ev termbox.Event) {
+	if pdebug.Enabled {
+		g := pdebug.Marker("doFinish")
+		defer g.End()
+	}
+	seq := state.Inputseq()
+	if s, err := keyseq.EventToString(ev); err == nil {
+		seq.Add(s)
+	}
+	keysstr := strings.Join(seq.KeyNames(), " ")
+	ccarg := state.config.Exec[state.config.Keymap[keysstr]]
+
+	sel := NewSelection()
+	state.Selection().Copy(sel)
+	if sel.Len() == 0 {
+		if l, err := state.CurrentLineBuffer().LineAt(state.Location().LineNumber()); err == nil {
+			sel.Add(l)
+		}
+	}
+
+	var buff bytes.Buffer
+	sel.Ascend(func(it btree.Item) bool {
+		line := it.(line.Line)
+		buff.WriteString(line.Buffer())
+		return true
+	})
+
+	var err error
+	state.Hub().SendStatusMsg(ctx, "Executing "+ccarg)
+	selection := buff.String()
+	cmdText := strings.Replace(ccarg, "$result", selection, -1)
+	cmd := util.Shell(cmdText)
+	cmd.Stdout = bytes.NewBuffer([]byte(cmdText))
+	cmd.Path = getShellPath(state)
+	if len(cmd.Path) == 0 {
+		state.Exit(errors.New("Please specify SHELL env variable"))
+	}
+	cmd.Args = []string{cmd.Path, "-c", cmdText}
 	cmd.Stderr = state.Stderr
 	// Setup some environment variables. Start with a copy of the current
 	// environment...

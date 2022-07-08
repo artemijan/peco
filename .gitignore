@@ -34,3 +34,7 @@ out
 _internal_bin
 vendor
 github_token
+.vscode
+.fleet
+.idea
+.DS_Store

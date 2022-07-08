@@ -79,27 +79,27 @@ type stringsToStyleTest struct {
 
 func TestStringsToStyle(t *testing.T) {
 	tests := []stringsToStyleTest{
-		stringsToStyleTest{
+		{
 			strings: []string{"on_default", "default"},
 			style:   &Style{fg: termbox.ColorDefault, bg: termbox.ColorDefault},
 		},
-		stringsToStyleTest{
+		{
 			strings: []string{"bold", "on_blue", "yellow"},
 			style:   &Style{fg: termbox.ColorYellow | termbox.AttrBold, bg: termbox.ColorBlue},
 		},
-		stringsToStyleTest{
+		{
 			strings: []string{"underline", "on_cyan", "black"},
 			style:   &Style{fg: termbox.ColorBlack | termbox.AttrUnderline, bg: termbox.ColorCyan},
 		},
-		stringsToStyleTest{
+		{
 			strings: []string{"reverse", "on_red", "white"},
 			style:   &Style{fg: termbox.ColorWhite | termbox.AttrReverse, bg: termbox.ColorRed},
 		},
-		stringsToStyleTest{
+		{
 			strings: []string{"on_bold", "on_magenta", "green"},
 			style:   &Style{fg: termbox.ColorGreen, bg: termbox.ColorMagenta | termbox.AttrBold},
 		},
-		stringsToStyleTest{
+		{
 			strings: []string{"underline", "on_240", "214"},
 			style:   &Style{fg: (214+1) | termbox.AttrUnderline, bg: 240+1},
 		},
